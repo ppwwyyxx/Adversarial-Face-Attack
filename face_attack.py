@@ -19,8 +19,6 @@ from scipy import interpolate
 import lfw as lfw
 import align.detect_face as FaceDet
 
-LFW_PATH160 = os.path.expanduser('~/data/LFW/MTCNN_160/')
-
 
 class Model():
 
@@ -30,17 +28,15 @@ class Model():
         self.image_batch = tf.placeholder(tf.uint8, shape=[None, 160, 160, 3], name='images')
 
         image = (tf.to_float(self.image_batch) - 127.5) / 128.0
-
         prelogits, _ = self.network.inference(image, 1.0, False, bottleneck_layer_size=512)
         self.embeddings = tf.nn.l2_normalize(prelogits, 1, 1e-10, name='embeddings')
 
         self.sess = tf.Session()
         saver = tf.train.Saver()
         saver.restore(self.sess, 'models/20180402-114759/model-20180402-114759.ckpt-275')
-        #saver.restore(self.sess, 'models/20180408-102900/model-20180408-102900.ckpt-90')
 
-    def compute_victim(self, name):
-        imgfolder = os.path.join(LFW_PATH160, name)
+    def compute_victim(self, lfw_160_path, name):
+        imgfolder = os.path.join(lfw_160_path, name)
         assert os.path.isdir(imgfolder)
         images = glob.glob(os.path.join(imgfolder, '*.png'))
         image_batch = [cv2.imread(f, cv2.IMREAD_COLOR)[:, :, ::-1] for f in images]
@@ -69,7 +65,7 @@ class Model():
                          lambda: padded, lambda: input_tensor)
         return output
 
-    def build_pgd_attack(self):
+    def build_pgd_attack(self, eps):
         victim_embeddings = tf.constant(self.victim_embeddings, dtype=tf.float32)
 
         def one_step_attack(image, grad):
@@ -92,9 +88,8 @@ class Model():
             return adv, noise
 
         input = tf.to_float(self.image_batch)
-        EPS = 16
-        lower_bound = tf.clip_by_value(input - EPS, 0, 255.)
-        upper_bound = tf.clip_by_value(input + EPS, 0, 255.)
+        lower_bound = tf.clip_by_value(input - eps, 0, 255.)
+        upper_bound = tf.clip_by_value(input + eps, 0, 255.)
 
         with tf.variable_scope(tf.get_variable_scope(), reuse=tf.AUTO_REUSE):
             adv, _ = tf.while_loop(
@@ -157,11 +152,11 @@ class Detector():
         return scaled, bbox
 
 
-def validate_on_lfw(model):
+def validate_on_lfw(model, lfw_160_path):
     # Read the file containing the pairs used for testing
-    pairs = lfw.read_pairs('data/pairs.txt')
+    pairs = lfw.read_pairs('validation-LFW-pairs.txt')
     # Get the paths for the corresponding images
-    paths, actual_issame = lfw.get_paths(LFW_PATH160, pairs)
+    paths, actual_issame = lfw.get_paths(lfw_160_path, pairs)
     num_pairs = len(actual_issame)
 
     all_embeddings = np.zeros((num_pairs * 2, 512), dtype='float32')
@@ -188,19 +183,24 @@ def validate_on_lfw(model):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--validate-lfw', action='store_true')
-    parser.add_argument('--detect', help='input image to detect face')
+    parser.add_argument(
+            '--data', help='path to MTCNN-aligned LFW dataset'
+            default=os.path.expanduser('~/data/LFW/MTCNN_160'))
+    parser.add_argument('--eps', type=int, default=16, help='maximum pixel perturbation')
 
+    parser.add_argument('--validate-lfw', action='store_true')
     parser.add_argument('--attack', help='input image to detect face and attack')
+    parser.add_argument('--output', help='output image', default='output.png')
+
+    parser.add_argument('--detect', help='input image to detect face')
     parser.add_argument('--attack-cropped', help='input 160x160 with aligned face to attack')
     parser.add_argument('--target', default='Arnold_Schwarzenegger')
-    parser.add_argument('--output', help='output image', default='output.png')
     args = parser.parse_args()
 
     model = Model()
 
     if args.validate_lfw:
-        validate_on_lfw(model)
+        validate_on_lfw(model, args.data)
         sys.exit()
     if args.detect:
         det = Detector()
@@ -209,8 +209,9 @@ if __name__ == '__main__':
         cv2.imwrite(args.output, scaled_face[:, :, ::-1])
         sys.exit()
 
-    victim = model.compute_victim(args.target)
-    model.build_pgd_attack()
+    victim = model.compute_victim(args.data, args.target)
+    assert len(victim) >= 10, "Too few victim images"
+    model.build_pgd_attack(args.eps)
     if args.attack_cropped:
         img = cv2.imread(args.attack_cropped)[:, :, ::-1]
         out = model.eval_attack(img)
