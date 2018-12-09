@@ -3,7 +3,7 @@
 
 [Geekpwn CAAD](https://en.caad.geekpwn.org/) (Competition on Adversarial Attacks and Defenses) 2018, 
 is a competition that inherits the format of NIPS CAAD 2017, plus some new challenges.
-In October 2018, our team (me and [Cihang Xie](https://cihangxie.github.io/)) was invited 
+In October 2018, me and [Cihang Xie](https://cihangxie.github.io/) were invited 
 to Geekpwn CAAD [CTF](https://ctftime.org/ctf-wtf/), a live competition with different types of adversarial attacks and defenses.
 
 This CAAD CTF features a new challenge that asks teams to attack an unknown 
@@ -93,3 +93,9 @@ After adding new images, you'll need to repeat step 4 in facenet wiki,
 to crop and align the images you add.
 
 Note that the attack contains randomness: you'll not get the same output every time.
+
+## Disclaimer
+
+1. This work is only for computer vision research. Please do not use it for illegal purposes.
+
+2. This work has no relationship with the authors' schools or employers.
