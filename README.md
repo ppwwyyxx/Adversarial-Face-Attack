@@ -11,7 +11,7 @@ face recognition system.
 During the 30 minutes phase 1 competition, we were given an image of the 
 competition moderator Chang-Jian Jiang. 
 We need to make small modifications to the image, 
-in order to fool the face recognition system to recognize it as Arnold Schwarzenegger.
+in order to __fool the face recognition system to recognize it as Arnold Schwarzenegger__.
 After the competition, we learned that the system we attacked was
 [AWS Celebrity Recognition API](https://aws.amazon.com/blogs/aws/amazon-rekognition-update-celebrity-recognition/).
 
@@ -23,8 +23,6 @@ During the competition, we successfully attacked AWS to recognize Chang-Jian
 Jiang as Schwarzenegger:
 
 ![AWS-JCJ](demo/AWS-JCJ.jpg)
-
-Later, we found that if the parameters are tuned well, such attack is almost always successful.
 
 The following one is slightly harder (lower success rate with varying random seeds),
 probably because: (1) both source and target are American celebrities. (2) different gender
@@ -43,6 +41,7 @@ can be fooled as well:
 ![Clarifai-JCJ](demo/Clarifai-JCJ.jpg)
 
 Original and adversarial versions of the above images can be found at [images/](images).
+You can download them and try on the public APIs.
 
 ## Preparation to Use the Code
 
@@ -50,7 +49,7 @@ Original and adversarial versions of the above images can be found at [images/](
 
 2. Follow steps 1-4 in [facenet wiki](https://github.com/davidsandberg/facenet/wiki/Validate-on-LFW) to setup facenet
 
-3. Clone this repo and uncompress the pre-trained models inside:
+3. Clone this repo and uncompress the pre-trained model inside:
 ```bash
 git clone https://github.com/ppwwyyxx/Adversarial-Face-Attack
 cd Adversarial-Face-Attack
@@ -59,7 +58,7 @@ tar xjvf model-20180402-114759.tar.bz2
 ```
 You can also [download the model from facenet](https://github.com/davidsandberg/facenet#pre-trained-models).
 
-4. Validate models and the dataset:
+4. Validate the model and the dataset:
 ```
 ./face_attack.py --data /path/to/lfw_mtcnnpy_160 --validate-lfw
 # /path/to/lfw_mtcnnpy_160 is obtained above in step #4 in facenet wiki.
@@ -84,9 +83,8 @@ Validation rate: 0.97467+-0.01454 @ FAR=0.00067
 in the LFW dataset. Such person can be found by:
 
 ```bash
-for i in /path/to/lfw_mtcnnpy_160/*; do
-	echo -n "$(basename $i) "; ls $i | wc -l;
-done | sort -k 2 -n
+find /path/to/lfw_mtcnnpy_160/ -type f -printf "%h\0" | \
+    xargs -0 -L1 basename | sort | uniq -c | sort -k1 -n 
 ```
 
 You can add new celebrities as victims in the LFW directory,
