@@ -70,6 +70,12 @@ class Model():
         victim_embeddings = tf.constant(self.victim_embeddings, dtype=tf.float32)
 
         def one_step_attack(image, grad):
+            """
+            core components of this attack are:
+            (a) PGD adversarial attack (https://arxiv.org/pdf/1706.06083.pdf)
+            (b) momentum (https://arxiv.org/pdf/1710.06081.pdf)
+            (c) input diversity (https://arxiv.org/pdf/1803.06978.pdf)
+            """
             orig_image = image
             image = self.structure(image)
             image = (image - 127.5) / 128.0
