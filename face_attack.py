@@ -41,6 +41,9 @@ class Model():
         assert os.path.isdir(imgfolder), imgfolder
         images = glob.glob(os.path.join(imgfolder, '*.png')) + glob.glob(os.path.join(imgfolder, '*.jpg'))
         image_batch = [cv2.imread(f, cv2.IMREAD_COLOR)[:, :, ::-1] for f in images]
+        for img in image_batch:
+            assert img.shape[0] == 160 and img.shape[1] == 160, \
+                "--data should only contain 160x160 images. Please read the README carefully."
         embeddings = self.eval_embeddings(image_batch)
         self.victim_embeddings = embeddings
         return embeddings
