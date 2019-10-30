@@ -12,7 +12,6 @@ import os
 import glob
 
 from sklearn import metrics
-from scipy import misc
 from scipy.optimize import brentq
 from scipy import interpolate
 
@@ -28,7 +27,7 @@ class Model():
 
         self.image_batch = tf.placeholder(tf.uint8, shape=[None, 160, 160, 3], name='images')
 
-        image = (tf.to_float(self.image_batch) - 127.5) / 128.0
+        image = (tf.cast(self.image_batch, tf.float32) - 127.5) / 128.0
         prelogits, _ = self.network.inference(image, 1.0, False, bottleneck_layer_size=512)
         self.embeddings = tf.nn.l2_normalize(prelogits, 1, 1e-10, name='embeddings')
 
@@ -146,9 +145,9 @@ class Detector():
 
         bounding_boxes, _ = FaceDet.detect_face(
                 img, minsize, self.pnet, self.rnet, self.onet, threshold, factor)
-        num_face = bounding_boxes.shape[0]
-        assert num_face == 1, num_face
-        bbox = bounding_boxes[0][:4]  # xy,xy
+        area = (bounding_boxes[:, 2] - bounding_boxes[:, 0]) * (bounding_boxes[:, 3] - bounding_boxes[:, 1])
+        face_idx = area.argmax()
+        bbox = bounding_boxes[face_idx][:4]  # xy,xy
 
         margin = 32
         x0 = np.maximum(bbox[0] - margin // 2, 0)
@@ -157,7 +156,7 @@ class Detector():
         y1 = np.minimum(bbox[3] + margin // 2, img.shape[0])
         x0, y0, x1, y1 = bbox = [int(k + 0.5) for k in [x0, y0, x1, y1]]
         cropped = img[y0:y1, x0:x1, :]
-        scaled = misc.imresize(cropped, (160, 160), interp='bilinear')
+        scaled = cv2.resize(cropped, (160, 160), interpolation=cv2.INTER_LINEAR)
         return scaled, bbox
 
 
@@ -229,6 +228,7 @@ if __name__ == '__main__':
     elif args.attack:
         det = Detector()
         img = cv2.imread(args.attack)[:, :, ::-1]
+        orig_img = np.copy(img).astype("float32")
         scaled_face, bbox = det.detect(img)
 
         print("ORIG detected box:", bbox)
@@ -236,9 +236,11 @@ if __name__ == '__main__':
 
         attack_face = model.eval_attack(scaled_face)
         print("Similarity of ADV:", model.distance_to_victim(attack_face))
-        attack_face_rescaled = misc.imresize(
-                attack_face, (bbox[3] - bbox[1], bbox[2] - bbox[0]))
+        attack_face_rescaled = cv2.resize(
+                attack_face, (bbox[2] - bbox[0], bbox[3] - bbox[1]),
+                interpolation=cv2.INTER_LINEAR)
         img[bbox[1]:bbox[3], bbox[0]:bbox[2], :] = attack_face_rescaled
+        img = np.clip(img, orig_img - args.eps, orig_img + args.eps)
         cv2.imwrite(args.output, img[:, :, ::-1])
 
         # scaled_face, bbox = det.detect(img)
