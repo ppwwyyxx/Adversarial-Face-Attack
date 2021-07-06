@@ -45,7 +45,7 @@ You can download them and try on the public APIs.
 
 ## Preparation to Use the Code
 
-1. Install TensorFlow ≥ 1.7
+1. Install 2 > TensorFlow ≥ 1.7, OpenCV, tqdm, scikit-learn
 
 2. Follow steps 1-4 in [facenet wiki](https://github.com/davidsandberg/facenet/wiki/Validate-on-LFW) to setup facenet
 
